@@ -64,7 +64,13 @@ exports.getUsers = async (req, res) => {
 
         const query = {};
 
-        if (role) query.role = role;
+        // By default, only show admin and superadmin users (not students)
+        if (role) {
+            query.role = role;
+        } else {
+            query.role = { $in: ['admin', 'superadmin'] };
+        }
+
         if (isActive !== undefined) query.isActive = isActive === 'true';
         if (search) query.$text = { $search: search };
 
@@ -354,7 +360,7 @@ exports.getAgentStats = async (req, res) => {
 // @access  Private (Super Admin)
 exports.createAdmin = async (req, res) => {
     try {
-        const { email, password, firstName, lastName } = req.body;
+        const { email } = req.body;
 
         const existingUser = await User.findOne({ email });
         if (existingUser) {
@@ -366,12 +372,14 @@ exports.createAdmin = async (req, res) => {
 
         const user = await User.create({
             email,
-            password,
+            password: 'Admin@123', // Default password
             role: 'admin',
             profile: {
-                firstName,
-                lastName
-            }
+                firstName: 'New',
+                lastName: 'Admin'
+            },
+            isFirstLogin: true,
+            requiresOnboarding: true
         });
 
         await AuditLog.createEntry({
@@ -400,6 +408,55 @@ exports.createAdmin = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error creating admin user',
+            error: error.message
+        });
+    }
+};
+
+// @desc    Delete user (admin or student)
+// @route   DELETE /api/superadmin/users/:id
+// @access  Private (Super Admin)
+exports.deleteUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Prevent deleting self
+        if (user._id.toString() === req.user._id.toString()) {
+            return res.status(400).json({
+                success: false,
+                message: 'You cannot delete your own account'
+            });
+        }
+
+        await User.findByIdAndDelete(req.params.id);
+
+        await AuditLog.createEntry({
+            action: 'user_deleted',
+            category: 'user',
+            performedBy: req.user._id,
+            performedByRole: req.user.role,
+            targetUser: user._id,
+            details: {
+                description: `Deleted user: ${user.email} (${user.role})`
+            },
+            severity: 'critical'
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'User deleted successfully'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting user',
             error: error.message
         });
     }

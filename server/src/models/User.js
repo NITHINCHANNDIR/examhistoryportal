@@ -33,12 +33,29 @@ const userSchema = new mongoose.Schema({
         lastName: { type: String, required: true },
         department: { type: String },
         batchYear: { type: Number },
+        semester: { type: Number },
+        dateOfBirth: { type: Date },
+        gender: { type: String },
         phone: { type: String },
+        address: {
+            street: String,
+            city: String,
+            state: String,
+            pincode: String
+        },
         avatar: { type: String }
     },
     isActive: {
         type: Boolean,
         default: true
+    },
+    isFirstLogin: {
+        type: Boolean,
+        default: false
+    },
+    requiresOnboarding: {
+        type: Boolean,
+        default: false
     },
     lastLogin: {
         type: Date

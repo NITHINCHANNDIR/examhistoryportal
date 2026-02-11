@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, UserPlus, Search, MoreHorizontal, CheckCircle, XCircle } from 'lucide-react';
+import { Shield, UserPlus, Search, MoreHorizontal, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { superAdminApi } from '../services/api';
 import { SkeletonTable } from '../components/ui/Skeleton';
 
@@ -7,6 +7,11 @@ const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newAdmin, setNewAdmin] = useState({
+        email: ''
+    });
+    const [isCreating, setIsCreating] = useState(false);
 
     useEffect(() => {
         loadUsers();
@@ -32,6 +37,36 @@ const UserManagement = () => {
         }
     };
 
+    const handleCreateAdmin = async (e) => {
+        e.preventDefault();
+        setIsCreating(true);
+        try {
+            await superAdminApi.createAdmin(newAdmin);
+            setShowAddModal(false);
+            setNewAdmin({ email: '' });
+            loadUsers(); // Reload users list
+            alert('Admin created successfully! The default password is "Admin@123". The user will be asked to change it on first login.');
+        } catch (error) {
+            console.error('Failed to create admin:', error);
+            alert(error.response?.data?.message || 'Failed to create admin');
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    const handleDeleteUser = async (user) => {
+        if (!window.confirm(`Are you sure you want to delete ${user.email}? This action cannot be undone.`)) return;
+
+        try {
+            await superAdminApi.deleteUser(user._id);
+            setUsers(users.filter(u => u._id !== user._id));
+            alert('User deleted successfully');
+        } catch (error) {
+            console.error('Failed to delete user:', error);
+            alert(error.response?.data?.message || 'Failed to delete user');
+        }
+    };
+
     const filteredUsers = users.filter(user =>
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.profile?.firstName?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -48,7 +83,7 @@ const UserManagement = () => {
                         Manage access controls and roles for {users.length} registered accounts.
                     </p>
                 </div>
-                <button className="btn btn-primary" style={{ gap: '8px' }}>
+                <button className="btn btn-primary" style={{ gap: '8px' }} onClick={() => setShowAddModal(true)}>
                     <UserPlus size={18} />
                     Add Administrator
                 </button>
@@ -120,8 +155,8 @@ const UserManagement = () => {
                                                 </div>
                                             </td>
                                             <td>
-                                                <span className={`badge ${user.roles.includes('superadmin') ? 'badge-primary' : user.roles.includes('admin') ? 'badge-info' : 'badge-secondary'}`}>
-                                                    {user.roles.join(', ').toUpperCase()}
+                                                <span className={`badge ${user.role === 'superadmin' ? 'badge-primary' : user.role === 'admin' ? 'badge-info' : 'badge-secondary'}`}>
+                                                    {user.role ? user.role.toUpperCase() : 'STUDENT'}
                                                 </span>
                                             </td>
                                             <td style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>
@@ -142,14 +177,22 @@ const UserManagement = () => {
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     <button
                                                         className="btn btn-secondary"
-                                                        style={{ padding: '8px', height: 'auto' }}
+                                                        style={{ padding: '8px 12px', height: 'auto', fontSize: '13px' }}
                                                         onClick={() => handleToggleStatus(user._id)}
                                                     >
                                                         {user.active ? 'Suspend' : 'Activate'}
                                                     </button>
-                                                    <button className="btn btn-secondary" style={{ padding: '8px', border: 'none', background: 'transparent' }}>
-                                                        <MoreHorizontal size={18} color="var(--color-text-secondary)" />
-                                                    </button>
+
+                                                    {user.role !== 'superadmin' && (
+                                                        <button
+                                                            className="btn btn-secondary"
+                                                            style={{ padding: '8px', color: 'var(--color-error)' }}
+                                                            onClick={() => handleDeleteUser(user)}
+                                                            title="Delete User"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -160,6 +203,69 @@ const UserManagement = () => {
                     </div>
                 )}
             </div>
+
+            {/* Add Admin Modal */}
+            {showAddModal && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '20px'
+                }} onClick={() => setShowAddModal(false)}>
+                    <div className="card" style={{
+                        maxWidth: '500px',
+                        width: '100%',
+                        padding: '32px'
+                    }} onClick={(e) => e.stopPropagation()}>
+                        <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '8px' }}>
+                            Create Administrator
+                        </h2>
+                        <p style={{ color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
+                            Add a new administrator to the system
+                        </p>
+
+                        <form onSubmit={handleCreateAdmin}>
+                            <div style={{ marginBottom: '24px' }}>
+                                <label className="label">Email Address</label>
+                                <input
+                                    type="email"
+                                    className="input"
+                                    required
+                                    value={newAdmin.email}
+                                    onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
+                                    placeholder="admin@example.com"
+                                />
+                                <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px' }}>
+                                    The new admin will log in using this email and default password <strong>Admin@123</strong>.
+                                    They will be prompted to set up their profile and change their password on first login.
+                                </p>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowAddModal(false)}
+                                    disabled={isCreating}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary"
+                                    disabled={isCreating}
+                                >
+                                    {isCreating ? 'Creating...' : 'Create Administrator'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

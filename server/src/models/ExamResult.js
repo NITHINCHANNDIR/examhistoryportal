@@ -110,7 +110,7 @@ const examResultSchema = new mongoose.Schema({
 });
 
 // Calculate percentage before saving
-examResultSchema.pre('save', function (next) {
+examResultSchema.pre('save', function () {
     if (this.marks.obtained !== undefined && this.marks.maximum) {
         this.marks.percentage = (this.marks.obtained / this.marks.maximum) * 100;
     }
@@ -126,8 +126,6 @@ examResultSchema.pre('save', function (next) {
         const signatureData = `${this.studentId}-${this.examId}-${this.subjectCode}-${this.marks.obtained}-${this.grade}`;
         this.digitalSignature = crypto.createHash('sha256').update(signatureData).digest('hex');
     }
-
-    next();
 });
 
 // Compound indexes for efficient queries
@@ -161,7 +159,7 @@ examResultSchema.statics.calculateCGPA = async function (studentId) {
         totalGradePoints += result.gradePoints * result.credits;
     });
 
-    return totalCredits > 0 ? (totalGradePoints / totalCredits).toFixed(2) : 0;
+    return totalCredits > 0 ? Math.round((totalGradePoints / totalCredits) * 100) / 100 : 0;
 };
 
 module.exports = mongoose.model('ExamResult', examResultSchema);

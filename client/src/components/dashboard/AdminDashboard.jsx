@@ -1,29 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Users,
-    Upload,
-    Bot,
-    Activity,
-    FileUp,
-    AlertTriangle,
-    CheckCircle,
-    Clock,
     TrendingUp,
-    RefreshCw,
-    ArrowUpRight,
-    ShieldCheck,
-    Search
+    FileText,
+    Award,
+    BarChart,
+    BookOpen,
+    Calendar,
+    Star
 } from 'lucide-react';
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { adminApi } from '../../services/api';
 import { SkeletonStats, SkeletonTable } from '../ui/Skeleton';
 
+
 const AdminDashboard = () => {
     const [stats, setStats] = useState(null);
-    const [agentLogs, setAgentLogs] = useState([]);
-    const [insights, setInsights] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [uploadProgress, setUploadProgress] = useState(null);
-    const [dragActive, setDragActive] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -31,19 +24,9 @@ const AdminDashboard = () => {
 
     const loadData = async () => {
         try {
-            const [studentsRes, logsRes, insightsRes] = await Promise.all([
-                adminApi.getStudents({ limit: 1 }),
-                adminApi.getAgentLogs({ limit: 10 }),
-                adminApi.getInsights({ limit: 5 })
-            ]);
+            const statsRes = await adminApi.getStats();
 
-            setStats({
-                totalStudents: studentsRes.data.total,
-                totalLogs: logsRes.data.total,
-                pendingInsights: insightsRes.data.data.filter(i => !i.acknowledgedBy).length
-            });
-            setAgentLogs(logsRes.data.data || []);
-            setInsights(insightsRes.data.data || []);
+            setStats(statsRes.data.data);
         } catch (error) {
             console.error('Error loading admin data:', error);
         } finally {
@@ -51,75 +34,8 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleDrag = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.type === 'dragenter' || e.type === 'dragover') {
-            setDragActive(true);
-        } else if (e.type === 'dragleave') {
-            setDragActive(false);
-        }
-    }, []);
 
-    const handleDrop = useCallback(async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setDragActive(false);
 
-        const file = e.dataTransfer?.files?.[0];
-        if (file) {
-            await uploadFile(file);
-        }
-    }, []);
-
-    const handleFileSelect = async (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            await uploadFile(file);
-        }
-    };
-
-    const uploadFile = async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        setUploadProgress({ status: 'uploading', filename: file.name });
-
-        try {
-            const response = await adminApi.uploadResults(formData);
-            setUploadProgress({
-                status: 'success',
-                filename: file.name,
-                result: response.data.data
-            });
-            loadData();
-        } catch (error) {
-            setUploadProgress({
-                status: 'error',
-                filename: file.name,
-                error: error.response?.data?.message || 'Upload failed'
-            });
-        }
-    };
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'completed': return 'var(--color-success)';
-            case 'failed': return 'var(--color-error)';
-            case 'running': return 'var(--color-primary)';
-            case 'grounded': return 'var(--color-warning)';
-            default: return 'var(--color-text-secondary)';
-        }
-    };
-
-    const getStatusIcon = (status) => {
-        switch (status) {
-            case 'completed': return CheckCircle;
-            case 'failed': return AlertTriangle;
-            case 'running': return RefreshCw;
-            default: return Clock;
-        }
-    };
 
     if (isLoading) {
         return (
@@ -143,13 +59,10 @@ const AdminDashboard = () => {
                         Admin Command Center
                     </h1>
                     <p style={{ fontSize: '15px', color: 'var(--color-text-secondary)', marginTop: '4px', fontWeight: 500 }}>
-                        Oversee student records, coordinate Antigravity Agent tasks, and manage data integrity.
+                        Oversee student records and manage data integrity.
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <button className="btn btn-secondary"><Activity size={18} /> System Status</button>
-                    <button className="btn btn-primary"><ShieldCheck size={18} /> Security Audit</button>
-                </div>
+
             </div>
 
             {/* Stats Grid */}
@@ -163,9 +76,12 @@ const AdminDashboard = () => {
             >
                 {[
                     { label: 'Students', value: stats?.totalStudents || 0, icon: Users, color: 'var(--color-primary)', bg: 'rgba(99, 102, 241, 0.1)' },
-                    { label: 'Agent Tasks', value: stats?.totalLogs || 0, icon: Bot, color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
-                    { label: 'Pending AI', value: stats?.pendingInsights || 0, icon: Activity, color: 'var(--color-warning)', bg: 'rgba(245, 158, 11, 0.1)' },
-                    { label: 'Integrity Score', value: '98.4%', icon: ShieldCheck, color: 'var(--color-success)', bg: 'rgba(16, 185, 129, 0.1)' }
+                    { label: 'Total Results', value: stats?.totalResults || 0, icon: FileText, color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
+                    { label: 'Average CGPA', value: stats?.averageCGPA?.toFixed(2) || '0.00', icon: TrendingUp, color: 'var(--color-success)', bg: 'rgba(16, 185, 129, 0.1)' },
+                    { label: 'Pass Rate', value: `${stats?.passRate || 100}%`, icon: Award, color: 'var(--color-warning)', bg: 'rgba(245, 158, 11, 0.1)' },
+                    { label: 'Highest CGPA', value: stats?.highestCGPA?.toFixed(2) || '0.00', icon: Star, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+                    { label: 'Total Subjects', value: stats?.totalSubjects || 0, icon: BookOpen, color: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },
+                    { label: 'Active Semesters', value: stats?.totalSemesters || 0, icon: Calendar, color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.1)' }
                 ].map((stat, i) => (
                     <div key={i} className="card" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
                         <div style={{
@@ -189,194 +105,194 @@ const AdminDashboard = () => {
                 ))}
             </div>
 
-            {/* Main Content Grid */}
+
+            {/* Charts Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                {/* Upload Section */}
-                <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+                {/* Grade Distribution Chart */}
+                <div className="card">
                     <div style={{ marginBottom: '24px' }}>
                         <h3 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Upload size={22} color="var(--color-primary)" />
-                            Result Ingestion
+                            <BarChart size={22} color="var(--color-primary)" />
+                            Grade Distribution
                         </h3>
-                        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Directly sync examination results from CSV/JSON sources.</p>
+                        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Overall grade breakdown across all students</p>
                     </div>
 
-                    <div
-                        onDragEnter={handleDrag}
-                        onDragLeave={handleDrag}
-                        onDragOver={handleDrag}
-                        onDrop={handleDrop}
-                        style={{
-                            border: `2px dashed ${dragActive ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                            borderRadius: '20px',
-                            padding: '48px 32px',
-                            textAlign: 'center',
-                            backgroundColor: dragActive ? 'rgba(99, 102, 241, 0.03)' : 'var(--color-surface)',
-                            transition: 'all 0.3s ease',
-                            cursor: 'pointer',
-                            flex: 1,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}
-                        onClick={() => document.getElementById('file-upload').click()}
-                    >
-                        <input id="file-upload" type="file" accept=".csv,.json" onChange={handleFileSelect} style={{ display: 'none' }} />
-                        <div style={{
-                            width: '64px',
-                            height: '64px',
-                            backgroundColor: 'var(--color-card-bg, white)',
-                            borderRadius: '20px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 8px 16px rgba(0,0,0,0.05)',
-                            marginBottom: '20px'
-                        }}>
-                            <FileUp size={32} color="var(--color-primary)" />
-                        </div>
-                        <p style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>
-                            Select Data File
-                        </p>
-                        <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                            Drag & drop CSV or JSON files here
-                        </p>
-                    </div>
-
-                    {uploadProgress && (
-                        <div style={{
-                            marginTop: '20px',
-                            padding: '20px',
-                            borderRadius: '16px',
-                            backgroundColor: uploadProgress.status === 'success' ? 'rgba(16, 185, 129, 0.05)' : uploadProgress.status === 'error' ? 'rgba(239, 68, 68, 0.05)' : 'var(--color-surface)',
-                            border: `1px solid ${uploadProgress.status === 'success' ? 'rgba(16, 185, 129, 0.2)' : uploadProgress.status === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'var(--color-border)'}`
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                                {uploadProgress.status === 'uploading' && <RefreshCw className="animate-spin" size={24} color="var(--color-primary)" />}
-                                {uploadProgress.status === 'success' && <CheckCircle size={24} color="var(--color-success)" />}
-                                {uploadProgress.status === 'error' && <AlertTriangle size={24} color="var(--color-error)" />}
-                                <div>
-                                    <p style={{ fontSize: '15px', fontWeight: 700 }}>{uploadProgress.filename}</p>
-                                    {uploadProgress.status === 'success' && uploadProgress.result && (
-                                        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                                            Successfully processed {uploadProgress.result.uploaded} records
-                                            {uploadProgress.result.errors > 0 && ` (${uploadProgress.result.errors} failed)`}
-                                        </p>
-                                    )}
-                                    {uploadProgress.status === 'error' && <p style={{ fontSize: '13px', color: 'var(--color-error)', fontWeight: 500 }}>{uploadProgress.error}</p>}
-                                </div>
-                            </div>
+                    {stats?.gradeDistribution && stats.gradeDistribution.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                                <Pie
+                                    data={stats.gradeDistribution}
+                                    cx="50%"
+                                    cy="50%"
+                                    labelLine={false}
+                                    label={({ grade, percent }) => `${grade}: ${(percent * 100).toFixed(0)}%`}
+                                    outerRadius={100}
+                                    fill="#8884d8"
+                                    dataKey="count"
+                                    nameKey="grade"
+                                >
+                                    {stats.gradeDistribution.map((entry, index) => {
+                                        const colors = {
+                                            'A+': '#10b981', 'A': '#34d399', 'B+': '#60a5fa', 'B': '#93c5fd',
+                                            'C+': '#fbbf24', 'C': '#fcd34d', 'D': '#fb923c', 'F': '#ef4444'
+                                        };
+                                        return <Cell key={`cell-${index}`} fill={colors[entry.grade] || '#6366f1'} />;
+                                    })}
+                                </Pie>
+                                <Tooltip />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+                            <div style={{ opacity: 0.1, marginBottom: '16px' }}><BarChart size={48} style={{ margin: '0 auto' }} /></div>
+                            <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>No grade data available</p>
                         </div>
                     )}
                 </div>
 
-                {/* Batch Insights */}
+                {/* Semester Performance Chart */}
                 <div className="card">
-                    <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <h3 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Activity size={22} color="var(--color-warning)" />
-                                AI Batch Insights
-                            </h3>
-                            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Agent-generated alerts and pattern analysis.</p>
-                        </div>
-                        <button className="btn btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }}>View History</button>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {insights.length === 0 ? (
-                            <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-                                <div style={{ opacity: 0.1, marginBottom: '16px' }}><Activity size={48} style={{ margin: '0 auto' }} /></div>
-                                <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Awaiting pattern detection</p>
-                            </div>
-                        ) : (
-                            insights.map((insight) => (
-                                <div key={insight._id} style={{ padding: '16px', borderRadius: '16px', border: '1.5px solid var(--color-border)', background: 'var(--color-card-bg, white)', transition: 'all 0.2s ease' }} onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary)'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border)'}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                        <span className={`badge ${insight.severity === 'critical' ? 'badge-error' : insight.severity === 'high' ? 'badge-warning' : 'badge-info'}`} style={{ textTransform: 'uppercase' }}>{insight.severity}</span>
-                                        <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>{new Date(insight.createdAt).toLocaleDateString()}</span>
-                                    </div>
-                                    <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{insight.data?.summary}</p>
-                                    <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                                        {insight.insightType.replace(/_/g, ' ')} • Academic {insight.scope?.academicYear}
-                                    </p>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Agent Logs Table */}
-            <div className="card" style={{ marginTop: '24px', padding: '0' }}>
-                <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
+                    <div style={{ marginBottom: '24px' }}>
                         <h3 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Bot size={22} color="var(--color-success)" />
-                            Antigravity Agent Execution Logs
+                            <TrendingUp size={22} color="var(--color-success)" />
+                            Semester Performance
                         </h3>
+                        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Average marks trend across semesters</p>
                     </div>
-                    <div style={{ position: 'relative' }}>
-                        <Search size={16} color="var(--color-text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                        <input className="input" placeholder="Search tasks..." style={{ width: '240px', paddingLeft: '36px', height: '36px' }} />
-                    </div>
+
+                    {stats?.semesterPerformance && stats.semesterPerformance.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                            <RechartsBarChart data={stats.semesterPerformance}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                                <XAxis dataKey="semester" stroke="var(--color-text-secondary)" />
+                                <YAxis stroke="var(--color-text-secondary)" />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: 'var(--color-card-bg)',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: '8px'
+                                    }}
+                                />
+                                <Bar dataKey="avgMarks" fill="#6366f1" radius={[8, 8, 0, 0]} />
+                            </RechartsBarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+                            <div style={{ opacity: 0.1, marginBottom: '16px' }}><TrendingUp size={48} style={{ margin: '0 auto' }} /></div>
+                            <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>No semester data available</p>
+                        </div>
+                    )}
                 </div>
 
-                <div style={{ padding: '0 16px' }}>
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th style={{ padding: '16px 24px' }}>Task Type</th>
-                                <th>Status</th>
-                                <th>Priority</th>
-                                <th>Origin</th>
-                                <th>Performance</th>
-                                <th style={{ textAlign: 'right', paddingRight: '24px' }}>Execution Time</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {agentLogs.length === 0 ? (
-                                <tr>
-                                    <td colSpan={6} style={{ textAlign: 'center', padding: '60px' }}>
-                                        <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>No operations logged yet</p>
-                                    </td>
-                                </tr>
-                            ) : (
-                                agentLogs.map((log) => {
-                                    const StatusIcon = getStatusIcon(log.status);
-                                    return (
-                                        <tr key={log._id}>
-                                            <td style={{ padding: '20px 24px', fontWeight: 700 }}>
-                                                {log.taskType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                                            </td>
-                                            <td>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: getStatusColor(log.status), fontWeight: 700, fontSize: '13px' }}>
-                                                    <StatusIcon size={16} />
-                                                    {log.status.toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span className={`badge ${log.priority === 'high' ? 'badge-error' : log.priority === 'medium' ? 'badge-warning' : 'badge-info'}`} style={{ minWidth: '80px', justifyContent: 'center' }}>{log.priority}</span>
-                                            </td>
-                                            <td style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>{log.triggeredBy}</td>
-                                            <td>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <span style={{ fontWeight: 600, fontSize: '13px' }}>{log.metrics?.duration ? `${(log.metrics.duration / 1000).toFixed(2)}s` : '-'}</span>
-                                                    <div style={{ height: '4px', width: '40px', backgroundColor: 'var(--color-surface)', borderRadius: '10px' }}>
-                                                        <div style={{ height: '100%', width: '70%', backgroundColor: 'var(--color-primary)', borderRadius: '10px' }} />
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td style={{ color: 'var(--color-text-muted)', fontSize: '12px', fontWeight: 700, textAlign: 'right', paddingRight: '24px' }}>
-                                                {new Date(log.createdAt).toLocaleString()}
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
+                {/* Subject Performance Chart */}
+                <div className="card">
+                    <div style={{ marginBottom: '24px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <BookOpen size={22} color="#ec4899" />
+                            Top Performing Subjects
+                        </h3>
+                        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Average marks by subject (Top 10)</p>
+                    </div>
+
+                    {stats?.subjectPerformance && stats.subjectPerformance.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                            <RechartsBarChart data={stats.subjectPerformance} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                                <XAxis type="number" stroke="var(--color-text-secondary)" />
+                                <YAxis dataKey="subject" type="category" width={150} stroke="var(--color-text-secondary)" style={{ fontSize: '12px' }} />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: 'var(--color-card-bg)',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: '8px'
+                                    }}
+                                />
+                                <Bar dataKey="avgMarks" fill="#ec4899" radius={[0, 8, 8, 0]} />
+                            </RechartsBarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+                            <div style={{ opacity: 0.1, marginBottom: '16px' }}><BookOpen size={48} style={{ margin: '0 auto' }} /></div>
+                            <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>No subject data available</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* CGPA Distribution Chart */}
+                <div className="card">
+                    <div style={{ marginBottom: '24px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Star size={22} color="#f59e0b" />
+                            CGPA Distribution
+                        </h3>
+                        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Student distribution across CGPA ranges</p>
+                    </div>
+
+                    {stats?.cgpaDistribution && stats.cgpaDistribution.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                            <RechartsBarChart data={stats.cgpaDistribution}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                                <XAxis dataKey="range" stroke="var(--color-text-secondary)" />
+                                <YAxis stroke="var(--color-text-secondary)" />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: 'var(--color-card-bg)',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: '8px'
+                                    }}
+                                />
+                                <Bar dataKey="count" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+                            </RechartsBarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+                            <div style={{ opacity: 0.1, marginBottom: '16px' }}><Star size={48} style={{ margin: '0 auto' }} /></div>
+                            <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>No CGPA data available</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Department Stats Chart */}
+                <div className="card">
+                    <div style={{ marginBottom: '24px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Users size={22} color="#06b6d4" />
+                            Department-wise Students
+                        </h3>
+                        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Student count by department</p>
+                    </div>
+
+                    {stats?.departmentStats && stats.departmentStats.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                                <Pie
+                                    data={stats.departmentStats}
+                                    cx="50%"
+                                    cy="50%"
+                                    labelLine={false}
+                                    label={({ department, percent }) => `${department}: ${(percent * 100).toFixed(0)}%`}
+                                    outerRadius={100}
+                                    fill="#8884d8"
+                                    dataKey="count"
+                                    nameKey="department"
+                                >
+                                    {stats.departmentStats.map((entry, index) => {
+                                        const colors = ['#06b6d4', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1', '#ef4444', '#14b8a6'];
+                                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                    })}
+                                </Pie>
+                                <Tooltip />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+                            <div style={{ opacity: 0.1, marginBottom: '16px' }}><Users size={48} style={{ margin: '0 auto' }} /></div>
+                            <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>No department data available</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

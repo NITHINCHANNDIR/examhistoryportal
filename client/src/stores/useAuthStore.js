@@ -26,9 +26,28 @@ const useAuthStore = create(
                         isLoading: false
                     });
 
-                    return { success: true };
+                    return { success: true, user };
                 } catch (error) {
                     const message = error.response?.data?.message || 'Login failed';
+                    set({ error: message, isLoading: false });
+                    return { success: false, error: message };
+                }
+            },
+
+            completeOnboarding: async (data) => {
+                set({ isLoading: true, error: null });
+                try {
+                    const response = await api.post('/auth/onboarding', data);
+                    const { user } = response.data;
+
+                    set({
+                        user,
+                        isLoading: false
+                    });
+
+                    return { success: true };
+                } catch (error) {
+                    const message = error.response?.data?.message || 'Onboarding failed';
                     set({ error: message, isLoading: false });
                     return { success: false, error: message };
                 }

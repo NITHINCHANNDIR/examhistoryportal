@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { register, login, getMe, logout, updatePassword, updateAvatar } = require('../controllers/authController');
+const { register, login, getMe, logout, updatePassword, updateAvatar, completeOnboarding } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
 // Configure multer for avatar uploads
@@ -37,5 +37,6 @@ router.get('/me', protect, getMe);
 router.post('/logout', protect, logout);
 router.put('/password', protect, updatePassword);
 router.put('/avatar', protect, upload.single('avatar'), updateAvatar);
+router.post('/onboarding', protect, completeOnboarding);
 
 module.exports = router;

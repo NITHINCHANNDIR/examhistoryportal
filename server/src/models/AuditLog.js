@@ -14,12 +14,15 @@ const auditLogSchema = new mongoose.Schema({
             'results_uploaded',
             'results_modified',
             'results_deleted',
+            'result_created',
+            'result_updated',
             'agent_grounded',
             'agent_resumed',
             'config_updated',
             'system_access',
             'export_data',
-            'bulk_operation'
+            'bulk_operation',
+            'onboarding_completed'
         ],
         index: true
     },

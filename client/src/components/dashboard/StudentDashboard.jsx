@@ -8,7 +8,8 @@ import {
     FileText,
     AlertCircle,
     CheckCircle,
-    ArrowUpRight
+    ArrowUpRight,
+    Filter
 } from 'lucide-react';
 import {
     LineChart,
@@ -30,6 +31,8 @@ const StudentDashboard = () => {
     const [trends, setTrends] = useState(null);
     const [results, setResults] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [showFilters, setShowFilters] = useState(false);
+    const [filterSemester, setFilterSemester] = useState('all');
 
     useEffect(() => {
         loadData();
@@ -49,6 +52,47 @@ const StudentDashboard = () => {
             setIsLoading(false);
         }
     };
+
+    const handleExportCSV = () => {
+        if (!results.length) {
+            alert('No results to export');
+            return;
+        }
+
+        const headers = ['Subject', 'Subject Code', 'Semester', 'Marks Obtained', 'Max Marks', 'Percentage', 'Grade', 'Credits', 'Academic Year', 'Status'];
+        const csvContent = [
+            headers.join(','),
+            ...results.map(result => [
+                `"${result.subjectName}"`,
+                result.subjectCode,
+                result.semester,
+                result.marks.obtained,
+                result.marks.maximum,
+                result.marks.percentage,
+                result.grade,
+                result.credits,
+                result.academicYear,
+                result.anomalyFlags?.length > 0 ? 'Review Needed' : 'Verified'
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `academic-transcript-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    };
+
+    const filteredResults = results.filter(result => {
+        if (filterSemester === 'all') return true;
+        return result.semester.toString() === filterSemester;
+    });
+
+    const semesters = [...new Set(results.map(r => r.semester))].sort((a, b) => a - b);
 
     // Calculate statistics
     const stats = trends ? [
@@ -329,10 +373,58 @@ const StudentDashboard = () => {
                         </h3>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                        <button className="btn btn-secondary" style={{ padding: '8px 16px' }}>Filter</button>
-                        <button className="btn btn-primary" style={{ padding: '8px 16px' }}>Download CSV</button>
+                        <button
+                            className={`btn ${showFilters ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setShowFilters(!showFilters)}
+                        >
+                            <Filter size={16} /> Filter
+                        </button>
+                        <button className="btn btn-primary" onClick={handleExportCSV}>Download CSV</button>
                     </div>
                 </div>
+
+                {/* Filter Bar */}
+                {showFilters && (
+                    <div style={{
+                        padding: '16px 24px',
+                        borderBottom: '1px solid var(--color-border)',
+                        backgroundColor: 'var(--color-surface)',
+                        animation: 'fadeIn 0.2s ease-out'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Filter by Semester:</span>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                    className={`badge ${filterSemester === 'all' ? 'badge-info' : ''}`}
+                                    style={{
+                                        cursor: 'pointer',
+                                        border: '1px solid var(--color-border)',
+                                        background: filterSemester === 'all' ? 'var(--color-primary)' : 'transparent',
+                                        color: filterSemester === 'all' ? 'white' : 'var(--color-text-secondary)'
+                                    }}
+                                    onClick={() => setFilterSemester('all')}
+                                >
+                                    All
+                                </button>
+                                {semesters.map(sem => (
+                                    <button
+                                        key={sem}
+                                        className={`badge ${filterSemester === sem.toString() ? 'badge-info' : ''}`}
+                                        style={{
+                                            cursor: 'pointer',
+                                            border: '1px solid var(--color-border)',
+                                            background: filterSemester === sem.toString() ? 'var(--color-primary)' : 'transparent',
+                                            color: filterSemester === sem.toString() ? 'white' : 'var(--color-text-secondary)'
+                                        }}
+                                        onClick={() => setFilterSemester(sem.toString())}
+                                    >
+                                        Sem {sem}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div style={{ padding: '0 16px' }}>
                     <table className="table">
@@ -347,15 +439,15 @@ const StudentDashboard = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {results.length === 0 ? (
+                            {filteredResults.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} style={{ textAlign: 'center', padding: '60px' }}>
                                         <div style={{ opacity: 0.5, marginBottom: '12px' }}><FileText size={40} style={{ margin: '0 auto' }} /></div>
-                                        <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>No academic records found</p>
+                                        <p style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>No academic records match your filter</p>
                                     </td>
                                 </tr>
                             ) : (
-                                results.map((result) => (
+                                filteredResults.map((result) => (
                                     <tr key={result._id}>
                                         <td style={{ padding: '20px 24px', fontWeight: 700 }}>{result.subjectName}</td>
                                         <td style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>{result.subjectCode}</td>

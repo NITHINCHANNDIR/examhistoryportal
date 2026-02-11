@@ -144,7 +144,9 @@ exports.login = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 studentId: user.studentId,
-                profile: user.profile
+                profile: user.profile,
+                isFirstLogin: user.isFirstLogin,
+                requiresOnboarding: user.requiresOnboarding
             }
         });
     } catch (error) {
@@ -276,6 +278,71 @@ exports.updateAvatar = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error updating profile picture',
+            error: error.message
+        });
+    }
+};
+
+// @desc    Complete onboarding (set password & profile)
+// @route   POST /api/auth/onboarding
+// @access  Private
+exports.completeOnboarding = async (req, res) => {
+    try {
+        const { firstName, lastName, newPassword } = req.body;
+
+        if (!firstName || !lastName || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide all fields'
+            });
+        }
+
+        const user = await User.findById(req.user.id).select('+password');
+
+        if (!user.requiresOnboarding) {
+            return res.status(400).json({
+                success: false,
+                message: 'User does not require onboarding'
+            });
+        }
+
+        user.profile.firstName = firstName;
+        user.profile.lastName = lastName;
+        user.password = newPassword;
+        user.isFirstLogin = false;
+        user.requiresOnboarding = false;
+
+        await user.save();
+
+        // Create audit log
+        await AuditLog.createEntry({
+            action: 'onboarding_completed',
+            category: 'user',
+            performedBy: user._id,
+            performedByRole: user.role,
+            details: {
+                description: 'User completed onboarding setup'
+            },
+            severity: 'info'
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Onboarding completed successfully',
+            user: {
+                id: user._id,
+                email: user.email,
+                role: user.role,
+                studentId: user.studentId,
+                profile: user.profile,
+                isFirstLogin: false,
+                requiresOnboarding: false
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error completing onboarding',
             error: error.message
         });
     }

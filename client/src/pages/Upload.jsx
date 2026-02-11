@@ -55,6 +55,26 @@ const Upload = () => {
         }
     };
 
+    const handleDownloadTemplate = () => {
+        const headers = ['subjectName', 'subjectCode', 'semester', 'credits', 'marksObtained', 'marksMax', 'studentEmail', 'academicYear'];
+        const sampleRow = ['Mathematics', 'MATH101', '1', '4', '85', '100', 'student@example.com', '2023-2024'];
+
+        const csvContent = [
+            headers.join(','),
+            sampleRow.join(',')
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'results_template.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    };
+
     return (
         <div style={{ padding: '32px', maxWidth: '1000px', margin: '0 auto' }}>
             <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -66,7 +86,7 @@ const Upload = () => {
                         Import examination results and student records in bulk.
                     </p>
                 </div>
-                <button className="btn btn-secondary" style={{ gap: '8px' }}>
+                <button className="btn btn-secondary" style={{ gap: '8px' }} onClick={handleDownloadTemplate}>
                     <Download size={18} /> Download Template
                 </button>
             </div>

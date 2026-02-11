@@ -45,11 +45,17 @@ export const studentApi = {
 };
 
 export const adminApi = {
+    getStats: () => api.get('/admin/stats'),
     uploadResults: (formData) => api.post('/admin/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
     getStudents: (params) => api.get('/admin/students', { params }),
+    addStudent: (data) => api.post('/admin/students', data),
+    deleteStudent: (id) => api.delete(`/admin/students/${id}`),
     getStudentDetails: (id) => api.get(`/admin/students/${id}`),
+    updateResult: (id, data) => api.put(`/admin/results/${id}`, data),
+    addResult: (data) => api.post('/admin/results', data),
+    deleteResult: (id) => api.delete(`/admin/results/${id}`),
     getAgentLogs: (params) => api.get('/admin/agent-logs', { params }),
     getInsights: (params) => api.get('/admin/insights', { params }),
     acknowledgeInsight: (id) => api.put(`/admin/insights/${id}/acknowledge`)
@@ -61,6 +67,7 @@ export const superAdminApi = {
     updateUserRole: (id, role) => api.put(`/superadmin/users/${id}/role`, { role }),
     toggleUserStatus: (id) => api.put(`/superadmin/users/${id}/status`),
     createAdmin: (data) => api.post('/superadmin/users/admin', data),
+    deleteUser: (id) => api.delete(`/superadmin/users/${id}`),
     groundAgent: (logId, reason) => api.post(`/superadmin/agent/ground/${logId}`, { reason }),
     getAgentStats: (params) => api.get('/superadmin/agent/stats', { params }),
     getConfig: () => api.get('/superadmin/config'),

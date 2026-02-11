@@ -1,56 +1,78 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { GraduationCap, Download, Printer, ShieldCheck, Share2 } from 'lucide-react';
 import useAuthStore from '../stores/useAuthStore';
-
-// Mock Data for Transcript (since we don't have a dedicated endpoint yet)
-// In a real app, we would fetch this from an API
-const MOCK_TRANSCRIPT_DATA = {
-    university: "Institute of Technology & Science",
-    address: "123 Academic Avenue, Knowledge City, State - 500001",
-    issueDate: "October 16, 2025",
-    semesters: [
-        {
-            sem: 1,
-            year: "2023-2024",
-            credits: 24,
-            sgpa: 9.2,
-            subjects: [
-                { code: "ENG101", name: "Engineering Mathematics I", credits: 4, grade: "A+" },
-                { code: "PHY101", name: "Engineering Physics", credits: 4, grade: "A" },
-                { code: "CS101", name: "Introduction to Programming", credits: 4, grade: "O" },
-                { code: "EE101", name: "Basic Electrical Engineering", credits: 3, grade: "A" },
-                { code: "ME101", name: "Engineering Graphics", credits: 3, grade: "A+" },
-                { code: "HU101", name: "Communication Skills", credits: 2, grade: "A" },
-            ]
-        },
-        {
-            sem: 2,
-            year: "2023-2024",
-            credits: 24,
-            sgpa: 9.4,
-            subjects: [
-                { code: "ENG102", name: "Engineering Mathematics II", credits: 4, grade: "O" },
-                { code: "CHE101", name: "Engineering Chemistry", credits: 4, grade: "A+" },
-                { code: "CS102", name: "Data Structures", credits: 4, grade: "O" },
-                { code: "EC101", name: "Basic Electronics", credits: 3, grade: "A" },
-                { code: "ME102", name: "Workshop Practice", credits: 2, grade: "O" },
-            ]
-        }
-    ]
-};
+import { studentApi } from '../services/api'; // Import studentApi
+import { pdf, PDFDownloadLink } from '@react-pdf/renderer';
+import toast from 'react-hot-toast';
+import TranscriptDocument from '../components/TranscriptDocument';
 
 const Transcript = () => {
     const { user } = useAuthStore();
-    const transcriptRef = useRef(null);
-    const [isPrinting, setIsPrinting] = useState(false);
+    const [transcriptData, setTranscriptData] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSharing, setIsSharing] = useState(false);
 
-    const handlePrint = () => {
-        setIsPrinting(true);
-        setTimeout(() => {
-            window.print();
-            setIsPrinting(false);
-        }, 500);
+    useEffect(() => {
+        const fetchTranscript = async () => {
+            try {
+                const response = await studentApi.getTranscript();
+                setTranscriptData(response.data.data);
+            } catch (error) {
+                console.error('Error fetching transcript:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        if (user) {
+            fetchTranscript();
+        }
+    }, [user]);
+
+    const handleShare = async () => {
+        if (!navigator.share) {
+            toast.error('Web Share API not supported on this browser');
+            return;
+        }
+
+        setIsSharing(true);
+        try {
+            const blob = await pdf(<TranscriptDocument transcriptData={transcriptData} user={user} />).toBlob();
+            const file = new File([blob], `Transcript_${user.studentId}.pdf`, {
+                type: 'application/pdf',
+                lastModified: Date.now()
+            });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                // Hint for user
+                toast('Opening share menu...\nIf WhatsApp is missing, please download the PDF and share manually.', {
+                    icon: 'ℹ️',
+                    duration: 5000,
+                });
+
+                await navigator.share({
+                    files: [file]
+                });
+            } else {
+                toast.error('File sharing not supported on this device/browser');
+            }
+        } catch (error) {
+            console.error('Error sharing:', error);
+            if (error.name !== 'AbortError') {
+                toast.error('Failed to share transcript');
+            }
+        } finally {
+            setIsSharing(false);
+        }
     };
+
+    if (isLoading) {
+        return <div style={{ padding: '60px', textAlign: 'center' }}>Loading transcript...</div>;
+    }
+
+    if (!transcriptData) {
+        return <div style={{ padding: '60px', textAlign: 'center' }}>Unable to load transcript data.</div>;
+    }
 
     return (
         <div style={{ padding: '32px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -64,19 +86,40 @@ const Transcript = () => {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
-                    <button className="btn btn-secondary" style={{ gap: '8px' }}>
-                        <Share2 size={18} /> Share
+                    <button
+                        onClick={handleShare}
+                        disabled={isSharing}
+                        className="btn"
+                        style={{
+                            gap: '8px',
+                            backgroundColor: 'var(--color-surface)',
+                            border: '1px solid var(--color-border)',
+                            color: 'var(--color-text-primary)',
+                            opacity: isSharing ? 0.7 : 1,
+                            cursor: isSharing ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        {isSharing ? <Printer size={18} className="animate-spin" /> : <Share2 size={18} />}
+                        {isSharing ? 'Sharing...' : 'Share PDF'}
                     </button>
-                    <button onClick={handlePrint} className="btn btn-primary" style={{ gap: '8px' }}>
-                        {isPrinting ? <Printer size={18} className="animate-pulse" /> : <Download size={18} />}
-                        Download PDF
-                    </button>
+                    <PDFDownloadLink
+                        document={<TranscriptDocument transcriptData={transcriptData} user={user} />}
+                        fileName={`Transcript_${user.studentId}.pdf`}
+                        className="btn btn-primary"
+                        style={{ textDecoration: 'none', gap: '8px' }}
+                    >
+                        {({ blob, url, loading, error }) => (
+                            <>
+                                {loading ? <Printer size={18} className="animate-spin" /> : <Download size={18} />}
+                                {loading ? 'Generating PDF...' : 'Download PDF'}
+                            </>
+                        )}
+                    </PDFDownloadLink>
                 </div>
             </div>
 
             {/* Transcript Paper */}
             <div
-                ref={transcriptRef}
                 className="card"
                 style={{
                     padding: '60px',
@@ -113,10 +156,10 @@ const Transcript = () => {
                         </div>
                         <div style={{ textAlign: 'left' }}>
                             <h2 style={{ fontSize: '24px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-primary)' }}>
-                                {MOCK_TRANSCRIPT_DATA.university}
+                                Institute of Technology & Science
                             </h2>
                             <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
-                                {MOCK_TRANSCRIPT_DATA.address}
+                                123 Academic Avenue, Knowledge City, State - 500001
                             </p>
                         </div>
                     </div>
@@ -134,7 +177,7 @@ const Transcript = () => {
                                 </tr>
                                 <tr>
                                     <td style={{ padding: '8px 0', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Student ID</td>
-                                    <td style={{ padding: '8px 0', fontWeight: 700 }}>{user?.profile?.studentId || 'STU-2024-001'}</td>
+                                    <td style={{ padding: '8px 0', fontWeight: 700 }}>{user?.studentId}</td>
                                 </tr>
                                 <tr>
                                     <td style={{ padding: '8px 0', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Date of Birth</td>
@@ -148,7 +191,7 @@ const Transcript = () => {
                             <tbody>
                                 <tr>
                                     <td style={{ padding: '8px 0', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Department</td>
-                                    <td style={{ padding: '8px 0', fontWeight: 700 }}>{user?.profile?.department || 'Computer Science'}</td>
+                                    <td style={{ padding: '8px 0', fontWeight: 700 }}>{user?.profile?.department}</td>
                                 </tr>
                                 <tr>
                                     <td style={{ padding: '8px 0', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Program</td>
@@ -156,7 +199,7 @@ const Transcript = () => {
                                 </tr>
                                 <tr>
                                     <td style={{ padding: '8px 0', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Issue Date</td>
-                                    <td style={{ padding: '8px 0', fontWeight: 700 }}>{MOCK_TRANSCRIPT_DATA.issueDate}</td>
+                                    <td style={{ padding: '8px 0', fontWeight: 700 }}>{new Date(transcriptData.generatedAt).toLocaleDateString()}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -165,10 +208,10 @@ const Transcript = () => {
 
                 {/* Semester Records */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', flex: 1 }}>
-                    {MOCK_TRANSCRIPT_DATA.semesters.map((sem) => (
-                        <div key={sem.sem} style={{ marginBottom: '16px' }}>
+                    {transcriptData.semesters.map((sem) => (
+                        <div key={sem.semester} style={{ marginBottom: '16px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', padding: '8px 16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-                                <span style={{ fontWeight: 700, fontSize: '14px' }}>SEMESTER {sem.sem} ({sem.year})</span>
+                                <span style={{ fontWeight: 700, fontSize: '14px' }}>SEMESTER {sem.semester} ({sem.results[0]?.academicYear || 'N/A'})</span>
                                 <span style={{ fontWeight: 700, fontSize: '14px' }}>SGPA: {sem.sgpa}</span>
                             </div>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
@@ -181,10 +224,10 @@ const Transcript = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {sem.subjects.map((sub, i) => (
+                                    {sem.results.map((sub, i) => (
                                         <tr key={i} style={{ borderBottom: '1px solid var(--color-surface)' }}>
-                                            <td style={{ padding: '8px', fontWeight: 500 }}>{sub.code}</td>
-                                            <td style={{ padding: '8px', fontWeight: 600 }}>{sub.name}</td>
+                                            <td style={{ padding: '8px', fontWeight: 500 }}>{sub.subjectCode}</td>
+                                            <td style={{ padding: '8px', fontWeight: 600 }}>{sub.subjectName}</td>
                                             <td style={{ padding: '8px', textAlign: 'center' }}>{sub.credits}</td>
                                             <td style={{ padding: '8px', textAlign: 'center', fontWeight: 700 }}>{sub.grade}</td>
                                         </tr>
@@ -206,7 +249,7 @@ const Transcript = () => {
                         </div>
                         <div style={{ textAlign: 'right' }}>
                             <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Cumulative Grade Point Average (CGPA)</p>
-                            <p style={{ fontSize: '32px', fontWeight: 900, color: 'var(--color-primary)', fontFamily: 'Outfit' }}>9.30</p>
+                            <p style={{ fontSize: '32px', fontWeight: 900, color: 'var(--color-primary)', fontFamily: 'Outfit' }}>{transcriptData.cgpa}</p>
                         </div>
                     </div>
 
@@ -226,13 +269,7 @@ const Transcript = () => {
                 </div>
             </div>
 
-            <style>{`
-                @media print {
-                    .no-print { display: none !important; }
-                    body { background: white; }
-                    .card { box-shadow: none; border: none; }
-                }
-            `}</style>
+
         </div>
     );
 };

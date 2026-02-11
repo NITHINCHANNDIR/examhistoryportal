@@ -5,12 +5,10 @@ import {
     FileText,
     Settings,
     Shield,
-    Activity,
     GraduationCap,
     BarChart3,
     Upload,
     History,
-    Bot,
     ClipboardList,
     LogOut
 } from 'lucide-react';
@@ -35,16 +33,12 @@ const Sidebar = ({ isCollapsed }) => {
             { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
             { path: '/students', icon: Users, label: 'Students' },
             { path: '/upload', icon: Upload, label: 'Upload Results' },
-            { path: '/agent-logs', icon: Bot, label: 'Agent Logs' },
-            { path: '/insights', icon: Activity, label: 'Insights' },
         ];
 
         const superAdminItems = [
             { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
             { path: '/students', icon: Users, label: 'Students' },
             { path: '/upload', icon: Upload, label: 'Upload Results' },
-            { path: '/agent-logs', icon: Bot, label: 'Agent Logs' },
-            { path: '/insights', icon: Activity, label: 'Insights' },
             { path: '/audit-logs', icon: History, label: 'Audit Logs' },
             { path: '/users', icon: Shield, label: 'User Management' },
             { path: '/settings', icon: Settings, label: 'System Settings' },

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Toaster } from 'react-hot-toast';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import useAuthStore from './stores/useAuthStore';
 import useThemeStore from './stores/useThemeStore';
@@ -13,12 +14,12 @@ import Results from './pages/Results';
 import Trends from './pages/Trends';
 import Transcript from './pages/Transcript';
 import Students from './pages/Students';
+import StudentDetails from './pages/StudentDetails';
 import Upload from './pages/Upload';
-import AgentLogs from './pages/AgentLogs';
-import Insights from './pages/Insights';
 import AuditLogs from './pages/AuditLogs';
 import UserManagement from './pages/UserManagement';
 import Settings from './pages/Settings';
+import Onboarding from './pages/Onboarding';
 import './index.css';
 
 function App() {
@@ -50,9 +51,21 @@ function App() {
     );
   }
 
+  if (user?.requiresOnboarding) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="*" element={<Navigate to="/onboarding" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
   return (
     <BrowserRouter>
       <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
+        <Toaster position="top-center" reverseOrder={false} />
         <Sidebar isCollapsed={isSidebarCollapsed} toggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
 
         <div
@@ -83,9 +96,8 @@ function App() {
 
               {/* Admin Routes */}
               <Route path="/students" element={<Students />} />
+              <Route path="/students/:id" element={<StudentDetails />} />
               <Route path="/upload" element={<Upload />} />
-              <Route path="/agent-logs" element={<AgentLogs />} />
-              <Route path="/insights" element={<Insights />} />
 
               {/* Super Admin Routes */}
               <Route path="/audit-logs" element={<AuditLogs />} />

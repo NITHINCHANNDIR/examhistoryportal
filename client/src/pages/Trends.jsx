@@ -43,7 +43,7 @@ const Trends = () => {
     }
 
     // Process data for charts
-    const semesterData = trends?.sgpaTrend?.map(item => ({
+    const semesterData = trends?.semesterTrends?.map(item => ({
         name: `Sem ${item.semester}`,
         sgpa: parseFloat(item.sgpa),
         cgpa: parseFloat(item.cgpa || item.sgpa) // Fallback if CGPA not available
@@ -96,7 +96,7 @@ const Trends = () => {
                     <div>
                         <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Best SGPA</p>
                         <p style={{ fontSize: '32px', fontWeight: 800, color: 'var(--color-text-primary)', fontFamily: 'Outfit, sans-serif' }}>
-                            {Math.max(...(trends?.sgpaTrend?.map(s => parseFloat(s.sgpa)) || [0])).toFixed(2)}
+                            {Math.max(...(trends?.semesterTrends?.map(s => parseFloat(s.sgpa)) || [0])).toFixed(2)}
                         </p>
                     </div>
                 </div>
@@ -257,7 +257,7 @@ const Trends = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {trends?.sgpaTrend?.map((sem) => (
+                                {trends?.semesterTrends?.map((sem) => (
                                     <tr key={sem.semester}>
                                         <td style={{ fontWeight: 700 }}>Semester {sem.semester}</td>
                                         <td style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>540 / 600</td>

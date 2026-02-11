@@ -25,8 +25,37 @@ const AuditLogs = () => {
 
     const filteredLogs = logs.filter(log =>
         log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.user?.email.toLowerCase().includes(searchTerm.toLowerCase())
+        log.performedBy?.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleExportCSV = () => {
+        if (!logs.length) {
+            alert('No logs to export');
+            return;
+        }
+
+        const headers = ['Actor', 'Action', 'Resource', 'IP Address', 'Timestamp'];
+        const csvContent = [
+            headers.join(','),
+            ...logs.map(log => [
+                log.performedBy?.email || 'Unknown',
+                `"${log.action}"`, // Quote to handle commas in action
+                `"${log.targetUser?.email || (log.details?.studentId ? `Student: ${log.details.studentId}` : (log.details?.resourceId || 'N/A'))}"`,
+                log.ipAddress || '127.0.0.1',
+                new Date(log.createdAt).toLocaleString()
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    };
 
     return (
         <div style={{ padding: '32px' }}>
@@ -39,7 +68,7 @@ const AuditLogs = () => {
                         Immutable record of all system modifications and access events.
                     </p>
                 </div>
-                <button className="btn btn-secondary" style={{ gap: '8px' }}>
+                <button className="btn btn-secondary" style={{ gap: '8px' }} onClick={handleExportCSV}>
                     <Download size={18} /> Export CSV
                 </button>
             </div>
@@ -64,7 +93,7 @@ const AuditLogs = () => {
                         />
                     </div>
                     <div style={{ display: 'flex', gap: '12px' }}>
-                        <button className="btn btn-secondary" style={{ backgroundColor: 'var(--color-card-bg)' }}>
+                        <button className="btn btn-secondary">
                             <Filter size={16} /> Filter Date
                         </button>
                     </div>
@@ -110,8 +139,8 @@ const AuditLogs = () => {
                                                         <User size={16} />
                                                     </div>
                                                     <div>
-                                                        <p style={{ fontWeight: 600, fontSize: '13px' }}>{log.user?.email || 'Unknown'}</p>
-                                                        <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>{log.user?.roles?.[0] || 'User'}</p>
+                                                        <p style={{ fontWeight: 600, fontSize: '13px' }}>{log.performedBy?.email || 'Unknown'}</p>
+                                                        <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>{log.performedBy?.role ? log.performedBy.role.toUpperCase() : 'USER'}</p>
                                                     </div>
                                                 </div>
                                             </td>
@@ -124,7 +153,10 @@ const AuditLogs = () => {
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                     <FileText size={14} color="var(--color-text-secondary)" />
                                                     <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
-                                                        {log.details?.resourceId ? log.details.resourceId.substring(0, 12) + '...' : 'N/A'}
+                                                        {log.targetUser ? log.targetUser.email :
+                                                            log.details?.studentId ? `Student: ${log.details.studentId}` :
+                                                                log.details?.resourceId ? log.details.resourceId.substring(0, 12) + '...' :
+                                                                    log.details?.description ? 'See details' : 'N/A'}
                                                     </span>
                                                 </div>
                                             </td>

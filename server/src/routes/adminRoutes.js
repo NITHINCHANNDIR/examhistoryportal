@@ -6,9 +6,15 @@ const {
     uploadResults,
     getStudents,
     getStudentDetails,
+    updateStudentResult,
+    addStudentResult,
+    deleteStudentResult,
+    addStudent,
     getAgentLogs,
     getBatchInsights,
-    acknowledgeInsight
+    acknowledgeInsight,
+    getStats,
+    deleteStudent
 } = require('../controllers/adminController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -42,9 +48,15 @@ const upload = multer({
 router.use(protect);
 router.use(authorize('admin', 'superadmin'));
 
+router.get('/stats', getStats);
 router.post('/upload', upload.single('file'), uploadResults);
 router.get('/students', getStudents);
+router.post('/students', addStudent);
+router.delete('/students/:id', deleteStudent);
 router.get('/students/:id', getStudentDetails);
+router.put('/results/:id', updateStudentResult);
+router.post('/results', addStudentResult);
+router.delete('/results/:id', deleteStudentResult);
 router.get('/agent-logs', getAgentLogs);
 router.get('/insights', getBatchInsights);
 router.put('/insights/:id/acknowledge', acknowledgeInsight);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Users, Search, Filter, MoreVertical, Plus, Mail, BookOpen, ChevronRight } from 'lucide-react';
+import { Users, Search, Filter, MoreVertical, Plus, Mail, BookOpen, ChevronRight, X, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { adminApi } from '../services/api';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +9,16 @@ const Students = () => {
     const [students, setStudents] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [newStudentForm, setNewStudentForm] = useState({
+        firstName: '',
+        lastName: '',
+        studentId: '',
+        email: '',
+        department: '',
+        batchYear: new Date().getFullYear()
+    });
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -22,6 +33,52 @@ const Students = () => {
             console.error('Error loading students:', error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleAddStudent = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            await adminApi.addStudent(newStudentForm);
+            await loadStudents();
+            setIsAddModalOpen(false);
+            setNewStudentForm({
+                firstName: '',
+                lastName: '',
+                studentId: '',
+                email: '',
+                department: '',
+                batchYear: new Date().getFullYear()
+            });
+            setNewStudentForm({
+                firstName: '',
+                lastName: '',
+                studentId: '',
+                email: '',
+                department: '',
+                batchYear: new Date().getFullYear()
+            });
+            toast.success('Student created successfully');
+        } catch (error) {
+            console.error('Error creating student:', error);
+            toast.error(error.response?.data?.message || 'Failed to create student');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDeleteStudent = async (e, student) => {
+        e.stopPropagation();
+        if (!window.confirm(`Are you sure you want to delete student ${student.profile?.firstName} ${student.profile?.lastName}?`)) return;
+
+        try {
+            await adminApi.deleteStudent(student._id);
+            setStudents(students.filter(s => s._id !== student._id));
+            toast.success('Student deleted successfully');
+        } catch (error) {
+            console.error('Failed to delete student:', error);
+            toast.error(error.response?.data?.message || 'Failed to delete student');
         }
     };
 
@@ -42,7 +99,11 @@ const Students = () => {
                         Manage {students.length} active student records.
                     </p>
                 </div>
-                <button className="btn btn-primary" style={{ gap: '8px' }}>
+                <button
+                    className="btn btn-primary"
+                    style={{ gap: '8px' }}
+                    onClick={() => setIsAddModalOpen(true)}
+                >
                     <Plus size={18} />
                     Add New Student
                 </button>
@@ -70,7 +131,7 @@ const Students = () => {
                         />
                     </div>
                     <div style={{ display: 'flex', gap: '12px' }}>
-                        <button className="btn btn-secondary" style={{ backgroundColor: 'var(--color-card-bg)' }}>
+                        <button className="btn btn-secondary">
                             <Filter size={16} /> Filter
                         </button>
                     </div>
@@ -144,7 +205,27 @@ const Students = () => {
                                                 <span className="badge badge-info">{student.profile?.batchYear}</span>
                                             </td>
                                             <td style={{ paddingRight: '32px', textAlign: 'right' }}>
-                                                <ChevronRight size={18} color="var(--color-text-muted)" />
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
+                                                    <button
+                                                        style={{
+                                                            padding: '6px',
+                                                            color: 'var(--color-text-muted)',
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            borderRadius: '6px'
+                                                        }}
+                                                        className="hover:text-error hover:bg-error/10"
+                                                        onClick={(e) => handleDeleteStudent(e, student)}
+                                                        title="Delete Student"
+                                                    >
+                                                        <Trash2 size={16} color="var(--color-error)" />
+                                                    </button>
+                                                    <ChevronRight size={18} color="var(--color-text-muted)" />
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -164,6 +245,112 @@ const Students = () => {
                     </div>
                 </div>
             </div>
+            {/* Add Student Modal */}
+            {isAddModalOpen && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div className="card" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                            <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Add New Student</h2>
+                            <button onClick={() => setIsAddModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                                <X size={24} color="var(--color-text-secondary)" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleAddStudent}>
+                            <div style={{ display: 'grid', gap: '16px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>First Name</label>
+                                        <input
+                                            className="input"
+                                            required
+                                            value={newStudentForm.firstName}
+                                            onChange={e => setNewStudentForm({ ...newStudentForm, firstName: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>Last Name</label>
+                                        <input
+                                            className="input"
+                                            required
+                                            value={newStudentForm.lastName}
+                                            onChange={e => setNewStudentForm({ ...newStudentForm, lastName: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>Student ID</label>
+                                    <input
+                                        className="input"
+                                        required
+                                        placeholder="e.g. 2023CS101"
+                                        value={newStudentForm.studentId}
+                                        onChange={e => setNewStudentForm({ ...newStudentForm, studentId: e.target.value })}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>Email Address</label>
+                                    <input
+                                        className="input"
+                                        type="email"
+                                        required
+                                        value={newStudentForm.email}
+                                        onChange={e => setNewStudentForm({ ...newStudentForm, email: e.target.value })}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>Department</label>
+                                        <input
+                                            className="input"
+                                            required
+                                            placeholder="e.g. Computer Science"
+                                            value={newStudentForm.department}
+                                            onChange={e => setNewStudentForm({ ...newStudentForm, department: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>Batch Year</label>
+                                        <input
+                                            className="input"
+                                            type="number"
+                                            required
+                                            placeholder="e.g. 2023"
+                                            value={newStudentForm.batchYear}
+                                            onChange={e => setNewStudentForm({ ...newStudentForm, batchYear: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ padding: '12px', backgroundColor: 'var(--color-surface)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                                    Default password will be set to: <strong>StudentID + FirstName (lowercase)</strong>
+                                </div>
+
+                                <div style={{ marginTop: '16px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                                    <button type="button" className="btn btn-secondary" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
+                                    <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                                        {isSubmitting ? 'Creating...' : 'Create Student'}
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

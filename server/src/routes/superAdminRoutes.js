@@ -9,7 +9,8 @@ const {
     getConfig,
     updateConfig,
     getAgentStats,
-    createAdmin
+    createAdmin,
+    deleteUser
 } = require('../controllers/superAdminController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -25,6 +26,7 @@ router.get('/users', getUsers);
 router.put('/users/:id/role', updateUserRole);
 router.put('/users/:id/status', toggleUserStatus);
 router.post('/users/admin', createAdmin);
+router.delete('/users/:id', deleteUser);
 
 // Agent control
 router.post('/agent/ground/:logId', groundAgentDecision);
