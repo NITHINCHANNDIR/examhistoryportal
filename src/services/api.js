@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// In production (Vercel), frontend and backend share the same domain.
+// Use a relative path so API calls go to the same host automatically.
+// In local development, proxy in vite.config.js forwards /api → localhost:5000.
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: '/api',
     headers: {
         'Content-Type': 'application/json'
     },
