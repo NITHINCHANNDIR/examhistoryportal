@@ -1,0 +1,48 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies (everywhere)
+node_modules
+client/node_modules
+server/node_modules
+agent/node_modules
+api/node_modules
+
+# Build output
+dist
+dist-ssr
+*.local
+
+# Environment files — NEVER push these!
+.env
+.env.local
+.env.production
+.env.development
+api/.env
+server/.env
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Uploads (local file storage)
+uploads/
+api/uploads/
+
+# Temp script files
+flatten_repo.cjs
+merge_to_demo.js
+lint.txt
