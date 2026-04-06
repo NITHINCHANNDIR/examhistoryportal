@@ -9,9 +9,9 @@ const connectDB = async () => {
     }
 
     try {
-        const conn = await mongoose.connect(process.env.MONGODB_URI || mongodb + srv://nithinchanndir232006_db_user:nithinchanndir232006_db_user@cluster0.sgozs7s.mongodb.net/?appName=Cluster0, {});
+        const conn = await mongoose.connect(process.env.MONGODB_URI, {});
 
-            isConnected = true;
+        isConnected = true;
         console.log(`MongoDB Connected: ${conn.connection.host}`);
 
         mongoose.connection.on('error', (err) => {
